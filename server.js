@@ -16,7 +16,7 @@ const dotenv = require("dotenv")
 const Medicine = require("./models/Medicines");
 
 const app = express();
-const JWT_SECRET = "process.env.JWT_SECRET";
+const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey123";
 const PORT = process.env.PORT || 5000;
 
 
@@ -36,6 +36,7 @@ const io = new Server(server, {
 
 
 // MongoDB Connection
+console.log("Connecting to:", process.env.MONGO_URI);
 mongoose.connect(process.env.MONGO_URI)
 
 // mongoose.connect("mongodb://localhost:27017/carenest") //E4LuIwhKkTa9f6n7  pikachukr06_db_user
@@ -81,12 +82,13 @@ const User = mongoose.model("User", userSchema);
 app.post("/signup", async (req, res) => {
   try {
     const { name, email, password, role } = req.body;
+    const normalizedEmail = email.toLowerCase().trim();
 
     if (!name || !email || !password || !role) {
       return res.status(400).json({ error: "All fields are required" });
     }
 
-    const existingUser = await User.findOne({ email, role });
+    const existingUser = await User.findOne({ email: normalizedEmail, role });
     if (existingUser) {
       return res.status(409).json({ error: `An account with this email already exists for role: ${role}` });
     }
@@ -105,7 +107,7 @@ if (!passwordRegex.test(password)) {
 
     const newUser = await User.create({
       name,
-      email,
+      email: normalizedEmail,
       password: hashedPassword,
       role,
     });
@@ -232,7 +234,8 @@ app.post("/reset-password-direct", async (req, res) => {
     }
 
     // ✅ Email + Role check
-    const user = await User.findOne({ email, role });
+    const normalizedEmail = email.toLowerCase().trim();
+    const user = await User.findOne({ email: normalizedEmail, role });
     if (!user) {
       return res.status(404).json({
         error: `No ${role} account found with this email`,
